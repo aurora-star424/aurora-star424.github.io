@@ -1,1 +1,538 @@
-<h1>Test</h1>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>哦吼</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { 
+            background: radial-gradient(ellipse at center, #1a2a6c 0%, #0a1029 100%);
+            overflow: hidden;
+        }
+        #canvas { display: block; }
+        .btn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            background: linear-gradient(to right, #FFD700, #FFEA80);
+            color: #1a2a6c;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 0 15px #FFD700;
+            z-index: 10;
+            transition: all 0.15s ease;
+        }
+        .btn:hover {
+            box-shadow: 0 0 25px #FFD700;
+            transform: translateX(-50%) scale(1.05);
+        }
+        .btn:active {
+            transform: translateX(-50%) scale(0.95);
+            box-shadow: 0 0 10px #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <button class="btn">圣诞节快乐</button>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const btn = document.querySelector('.btn');
+        
+        let clickCount = 0;
+        let isTextActive = false;
+        let isHeartActive = false;
+        let textParticles = [];
+        let heartParticles = [];
+        let starParticles = []; // 背景星空粒子
+        const text = "♥小魚♥";
+        const textColor = "rgba(255, 105, 180, 1)";
+        let fontSize;
+        let textComplete = false; // 文字是否组成完成
+
+        // 帧率控制
+        let lastFrameTime = 0;
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+
+        // 设置响应式字体大小
+        function setResponsiveFontSize() {
+            const screenWidth = window.innerWidth;
+            fontSize = screenWidth < 768 ? 40 : 50;
+        }
+
+        // 初始化画布
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            setResponsiveFontSize();
+            
+            // 初始化背景星空
+            initStarParticles();
+            
+            if (isTextActive) generateTextParticles();
+            if (isHeartActive) generateHeartParticles();
+        }
+
+        // 初始化背景星空粒子
+        function initStarParticles() {
+            starParticles = [];
+            const starCount = window.innerWidth < 768 ? 100 : 150;
+            for (let i = 0; i < starCount; i++) {
+                starParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.5 + 0.5,
+                    blinkSpeed: Math.random() * 0.001 + 0.0005,
+                    blinkOffset: Math.random() * Math.PI * 2,
+                    opacity: 0.2 + Math.random() * 0.8
+                });
+            }
+        }
+
+        // 更新并绘制背景星空
+        function updateStars() {
+            const time = performance.now() * 0.001;
+            ctx.shadowBlur = 3;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            
+            for (let i = 0; i < starParticles.length; i++) {
+                const star = starParticles[i];
+                
+                // 缓慢闪烁效果
+                const blink = Math.sin(time * star.blinkSpeed + star.blinkOffset) * 0.5 + 0.5;
+                const currentOpacity = star.opacity * blink;
+                
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${currentOpacity})`;
+                ctx.fill();
+            }
+        }
+
+        initCanvas();
+        window.addEventListener('resize', initCanvas);
+
+        // 绘制圣诞树（使用色块）
+        function drawChristmasTree() {
+            const centerX = canvas.width / 2;
+            const starY = canvas.height / 2 - 150;
+            const totalTreeHeight = 220;
+            const layerHeight = totalTreeHeight / 3;
+            
+            // 绘制三层树冠（色块）
+            for (let layer = 0; layer < 3; layer++) {
+                const layerYStart = starY + layer * layerHeight;
+                const layerYEnd = layerYStart + layerHeight;
+                
+                let layerWidth, maxXOffset;
+                if (layer === 0) {
+                    layerWidth = 60; maxXOffset = 30;
+                } else if (layer === 1) {
+                    layerWidth = 100; maxXOffset = 50;
+                } else {
+                    layerWidth = 150; maxXOffset = 75;
+                }
+                
+                const slope = layerHeight / maxXOffset;
+                
+                // 使用路径绘制树层
+                ctx.beginPath();
+                ctx.moveTo(centerX - layerWidth/2, layerYStart);
+                ctx.lineTo(centerX + layerWidth/2, layerYStart);
+                ctx.lineTo(centerX + maxXOffset, layerYEnd);
+                ctx.lineTo(centerX - maxXOffset, layerYEnd);
+                ctx.closePath();
+                
+                // 根据层级设置不同绿色
+                const greenValue = 139 - layer * 20;
+                ctx.fillStyle = `rgb(34, ${greenValue}, 34)`;
+                ctx.fill();
+            }
+            
+            // 绘制装饰球
+            const decorations = [
+                {x: centerX, y: starY + layerHeight * 0.7, color: 'rgba(255, 105, 180, 0.9)'}, // 粉色
+                {x: centerX - 30, y: starY + layerHeight * 1.2, color: 'rgba(255, 69, 0, 0.9)'}, // 橙色
+                {x: centerX + 40, y: starY + layerHeight * 1.5, color: 'rgba(255, 105, 180, 0.9)'}, // 粉色
+                {x: centerX - 50, y: starY + layerHeight * 2.2, color: 'rgba(255, 69, 0, 0.9)'}, // 橙色
+                {x: centerX + 20, y: starY + layerHeight * 2.5, color: 'rgba(255, 105, 180, 0.9)'}  // 粉色
+            ];
+            
+            decorations.forEach(deco => {
+                ctx.beginPath();
+                ctx.arc(deco.x, deco.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = deco.color;
+                ctx.fill();
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = deco.color;
+            });
+        }
+
+        // 文字粒子类
+        class TextParticle {
+            constructor(targetX, targetY) {
+                const edge = Math.floor(Math.random() * 4);
+                if (edge === 0) { this.x = Math.random() * canvas.width; this.y = -20; }
+                else if (edge === 1) { this.x = canvas.width + 20; this.y = Math.random() * canvas.height; }
+                else if (edge === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + 20; }
+                else { this.x = -20; this.y = Math.random() * canvas.height; }
+
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.color = textColor;
+                this.size = 2;
+                this.speed = (0.008 + Math.random() * 0.005) / 5; 
+                this.progress = 0;
+                this.completed = false;
+            }
+            
+            update() {
+                if (this.completed) return;
+                
+                this.progress += this.speed;
+                if (this.progress > 1) {
+                    this.progress = 1;
+                    this.completed = true;
+                }
+                const ease = this.easeOutCubic(this.progress);
+                this.x = this.lerp(this.x, this.targetX, ease);
+                this.y = this.lerp(this.y, this.targetY, ease);
+                
+                // 检测文字是否全部组成完成（优化版本）
+                if (!textComplete && this.progress >= 1) {
+                    const allComplete = textParticles.every(p => p.completed || p.progress >= 1);
+                    if (allComplete) {
+                        textComplete = true;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 12; 
+                ctx.shadowColor = "rgba(255, 105, 180, 0.9)";
+            }
+            
+            lerp(a, b, t) { return a + (b - a) * t; }
+            easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+        }
+
+        // 心形粒子类（添加点击互动）
+        class HeartParticle {
+            constructor() {
+                this.centerX = canvas.width / 2;
+                this.centerY = canvas.height / 2 + 10;
+                this.baseRadius = 80 + Math.random() * 50;
+                this.depth = Math.random();
+                this.radius = this.baseRadius * (0.7 + this.depth * 0.6);
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 0.008 + Math.random() * 0.005 * (1 - this.depth);
+                this.size = 1.5 + Math.random() * 1.5 * (this.depth + 0.5);
+                this.pulse = Math.random() * Math.PI;
+                this.hueOffset = Math.random() * 360;
+                this.colorSpeed = 0.5 + Math.random() * 0.3;
+                
+                // 点击互动相关
+                this.isDisturbed = false;
+                this.disturbProgress = 0;
+                this.originalX = 0;
+                this.originalY = 0;
+                
+                // 预计算三角函数值
+                this.sinCache = Math.sin(this.angle);
+                this.cosCache = Math.cos(this.angle);
+            }
+
+            update() {
+                // 处理点击扰动效果
+                if (this.isDisturbed) {
+                    this.disturbProgress += 0.02;
+                    if (this.disturbProgress > 1) {
+                        this.disturbProgress = 0;
+                        this.isDisturbed = false;
+                    }
+                    
+                    const ease = 1 - Math.pow(1 - this.disturbProgress, 3);
+                    this.x = this.lerp(this.disturbX, this.originalX, ease);
+                    this.y = this.lerp(this.disturbY, this.originalY, ease);
+                } else {
+                    // 正常旋转
+                    this.angle += this.speed;
+                    if (this.angle > Math.PI * 2) this.angle -= Math.PI * 2;
+                    
+                    this.pulse += 0.02;
+                    const pulseSize = 1 + Math.sin(this.pulse) * 0.3;
+                    
+                    // 优化心形轨迹计算
+                    const t = this.angle;
+                    const sinT = Math.sin(t);
+                    const cosT = Math.cos(t);
+                    const sin3T = sinT * sinT * sinT;
+                    
+                    const x = 16 * sin3T;
+                    const y = 13 * cosT - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                    
+                    this.originalX = this.centerX + (x * (this.radius / 16)) * pulseSize;
+                    this.originalY = this.centerY + (y * (this.radius / 16)) * pulseSize * -1;
+                    
+                    this.x = this.originalX;
+                    this.y = this.originalY;
+                }
+                
+                // 更新颜色（优化版本）
+                const time = performance.now() * 0.001;
+                const hue = (320 + Math.sin(time + this.hueOffset) * 30 + this.colorSpeed) % 360;
+                const saturation = 80 + Math.sin(time * 0.8 + this.hueOffset) * 20;
+                const lightness = 60 + Math.sin(time * 1.2 + this.hueOffset) * 10;
+                const alpha = 0.5 + this.depth * 0.5;
+                this.color = `hsla(${Math.floor(hue)}, ${Math.floor(saturation)}%, ${Math.floor(lightness)}%, ${alpha})`;
+            }
+
+            // 触发点击扰动
+            disturb(x, y) {
+                this.isDisturbed = true;
+                this.disturbProgress = 0;
+                this.disturbX = x + (Math.random() - 0.5) * 50;
+                this.disturbY = y + (Math.random() - 0.5) * 50;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                const alphaMatch = this.color.match(/[\d.]+(?=\))/);
+                const alpha = alphaMatch ? alphaMatch[0] : '0.7';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color.replace(alpha, '0.7');
+            }
+            
+            lerp(a, b, t) { return a + (b - a) * t; }
+        }
+
+        // 雪花类
+        class Snowflake {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = -Math.random() * 50;
+                this.size = 1 + Math.random() * 2;
+                this.speedY = 0.6 + Math.random() * 1.2;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.opacity = 0.6 + Math.random() * 0.4;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotateSpeed = (Math.random() - 0.5) * 0.02;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                this.rotation += this.rotateSpeed;
+                if (this.y > canvas.height) this.reset();
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.beginPath();
+                for(let i = 0; i < 6; i++) {
+                    ctx.lineTo(this.size * Math.cos(i * Math.PI / 3), this.size * Math.sin(i * Math.PI / 3));
+                }
+                ctx.closePath();
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+                ctx.restore();
+            }
+        }
+
+        // 生成文字粒子
+        function generateTextParticles() {
+            textParticles = [];
+            textComplete = false; // 重置文字完成状态
+            ctx.font = `bold ${fontSize}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const textY = canvas.height / 2 + 150;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCtx.font = ctx.font;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillText(text, canvas.width / 2, textY);
+            
+            const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            const step = window.innerWidth < 768 ? 4 : 3;
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const index = (y * canvas.width + x) * 4;
+                    if (pixels[index + 3] > 128) {
+                        textParticles.push(new TextParticle(x, y));
+                    }
+                }
+            }
+        }
+
+        // 生成心形粒子
+        function generateHeartParticles() {
+            heartParticles = [];
+            const heartCount = window.innerWidth < 768 ? 50 : 70;
+            for (let i = 0; i < heartCount; i++) {
+                heartParticles.push(new HeartParticle());
+            }
+            isHeartActive = true;
+        }
+
+        // 检测点击是否命中心形粒子
+        function checkHeartClick(x, y) {
+            let hit = false;
+            for (let i = 0; i < heartParticles.length; i++) {
+                const heart = heartParticles[i];
+                const dx = x - heart.x;
+                const dy = y - heart.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < heart.size + 5) { // 点击判定范围
+                    heart.disturb(x, y);
+                    hit = true;
+                }
+            }
+            return hit;
+        }
+
+        // 初始化粒子（仅保留雪花）
+        const snowCount = window.innerWidth < 768 ? 50 : 70;
+        const snowflakes = Array(snowCount).fill().map(() => new Snowflake());
+
+        // 按钮点击事件
+        btn.addEventListener('click', () => {
+            clickCount++;
+            if (clickCount === 1 && !isTextActive) {
+                generateTextParticles();
+                isTextActive = true;
+            } else if (clickCount === 2 && !isHeartActive) {
+                generateHeartParticles();
+                btn.textContent = "圣诞节快乐";
+            } else if (clickCount > 2) {
+                clickCount = 0;
+                isTextActive = false;
+                isHeartActive = false;
+                textComplete = false;
+                textParticles = [];
+                heartParticles = [];
+                btn.textContent = "圣诞节快乐";
+            }
+        });
+
+        // 画布点击事件（心形互动）
+        canvas.addEventListener('click', (e) => {
+            if (isHeartActive) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                checkHeartClick(x, y);
+            }
+        });
+
+        // 星星绘制（闪烁效果）
+        function drawStar(x, y, outerR, innerR, points) {
+            ctx.save();
+            const time = performance.now() * 0.001;
+            const blink = 1 + Math.sin(time * 2) * 0.1;
+            const scaleOuter = outerR * blink;
+            const scaleInner = innerR * blink;
+
+            ctx.beginPath();
+            const angle = Math.PI / points;
+            for (let i = 0; i < 2 * points; i++) {
+                const r = i % 2 === 0 ? scaleOuter : scaleInner;
+                const px = x + Math.cos(i * angle) * r;
+                const py = y + Math.sin(i * angle) * r;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            const starAlpha = 0.8 + Math.sin(time * 3) * 0.2;
+            ctx.fillStyle = `rgba(255, 215, 0, ${starAlpha})`;
+            ctx.fill();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "rgba(255, 215, 0, 0.9)";
+            ctx.restore();
+        }
+
+        // 主动画循环
+        function animate(currentTime) {
+            // 帧率控制
+            if (currentTime - lastFrameTime < frameInterval) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            lastFrameTime = currentTime;
+
+            // 更高效的清屏方式
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(10, 16, 41, 0.2)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制背景星空
+            updateStars();
+
+            // 绘制圣诞树（色块）
+            drawChristmasTree();
+            
+            // 绘制雪花
+            for (let i = 0; i < snowflakes.length; i++) {
+                snowflakes[i].update();
+                snowflakes[i].draw();
+            }
+            
+            // 绘制文字粒子
+            if (isTextActive) {
+                for (let i = 0; i < textParticles.length; i++) {
+                    textParticles[i].update();
+                    textParticles[i].draw();
+                }
+            }
+            
+            // 绘制心形粒子
+            if (isHeartActive) {
+                for (let i = 0; i < heartParticles.length; i++) {
+                    heartParticles[i].update();
+                    heartParticles[i].draw();
+                }
+            }
+
+            // 绘制树顶星星
+            const starSize = window.innerWidth < 768 ? 12 : 18;
+            drawStar(canvas.width / 2, canvas.height / 2 - 150, starSize, starSize * 0.55, 5);
+            
+            // 绘制圣诞树底座
+            const baseSize = window.innerWidth < 768 ? 25 : 35;
+            ctx.beginPath();
+            ctx.rect(canvas.width/2 - baseSize, canvas.height/2 + 70, baseSize * 2, baseSize); 
+            ctx.fillStyle = "rgba(139, 69, 19, 0.9)";
+            ctx.fill();
+
+            requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
